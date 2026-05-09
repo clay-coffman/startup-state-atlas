@@ -132,6 +132,48 @@ Read endpoints are unauthenticated. Writes branch inside the route
 handler — see the Agent 5 brief for the dual-auth precedence on
 `PATCH /api/v1/companies/:slug`.
 
+## Phase 6 / post-MVP — investor public surface + intros
+
+Not part of the 24-hour hackathon ship. Documented here so the URL
+matrix stays the source of truth when Agent 8 picks up the work.
+See `agent-tasks/agent-8-investor.md` for the brief and
+`requirements.md` § Investor public surface for the feature spec.
+Phase 4 already ships the investor sign-up, role, onboarding
+preferences, and `/settings` Investor section.
+
+| URL | Agent | Wireframe variant | Role | Notes |
+|-----|-------|------------------|------|-------|
+| `/investors` | 8 | — (mirror `/startups` directory pattern) | anon | Public directory; only `verified` profiles appear |
+| `/investors/:slug` | 8 | — (mirror `/startups/:slug` profile) | anon | Public investor profile; **no email exposed** |
+| `/investors/:slug.md` | 8 | — | anon | Markdown agent card |
+| `/investors/:slug.json` | 8 | — | anon | JSON agent card |
+| `/investors/:slug/edit` | 8 | — (mirror company edit) | owner-of-investor OR admin | Public-fields editor; linked from `/settings` Investor section |
+| `/me/saved` | 8 | — | signed-in (`investor`) | Investor's saved-companies watchlist |
+| `/me/intros` | 8 | — | signed-in | Own intros — sent + received (after admin accepts) |
+| `/admin/intros` | 8 | — | admin | Intro-request queue, pending first |
+| `/admin/intros/:id` | 8 | — | admin | Review one intro: accept / decline / mark introduced + notes |
+
+New API routes added in Phase 6:
+
+| Method + path | Agent | Auth | Notes |
+|---------------|-------|------|-------|
+| GET `/api/v1/investors` | 8 | anon | Verified investor list |
+| GET `/api/v1/investor-profiles/:slug` | 8 | anon | Public investor profile by slug |
+| PATCH `/api/v1/investor-profiles/:slug` | 8 | owner OR admin OR machine | Three auth paths, like `companies/:slug` |
+| POST `/api/v1/saved-companies` | 8 | signed-in | Save a company |
+| DELETE `/api/v1/saved-companies?company_id=…` | 8 | signed-in | Unsave |
+| GET `/api/v1/saved-companies` | 8 | signed-in | Own watchlist |
+| POST `/api/v1/intro-requests` | 8 | signed-in | Create intro request |
+| GET `/api/v1/intro-requests` | 8 | signed-in | Own intros (sent + received) |
+| GET `/api/v1/intro-requests/:id` | 8 | own OR admin | Single intro |
+| PATCH `/api/v1/intro-requests/:id` | 8 | admin | Accept / decline / mark introduced |
+
+Role gates: `/investors/:slug/edit` is gated on
+`investor_profiles.user_id === session.user.id` OR admin role.
+`/me/saved` and `/me/intros` are gated on any signed-in session
+(content scopes itself to the session user). `/admin/intros`
+reuses Agent 5's `goeo_admin | superadmin` middleware.
+
 ## Wireframe variant disposition
 
 We're not picking variants now. For each screen with multiple v2

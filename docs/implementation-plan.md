@@ -67,7 +67,17 @@ Phase 3  Recommend + Nav + Agents-native  (parallel ✕3)  Agents 2, 3, 6
 Phase 4  Map + Auth & Admin  (parallel ✕2)    Agents 4, 5
             │
 Phase 5  Polish + e2e + demo dry-run          (whoever has cycles)
+            │
+Phase 6  Investor public surface + intros     Agent 8           [POST-MVP]
 ```
+
+**Phases 1–5 are the hackathon ship.** Phase 6 lands after the
+24-hour demo as a post-MVP follow-up. It builds **on top of** Agent
+5's investor identity work (Phase 4): public investor directory and
+profile pages, saved-companies watchlists, and admin-brokered intro
+requests. If Phase 6 never ships, the product still works — Phase 4
+investors exist, they just don't have a public surface or
+watchlists.
 
 Concurrency cap is **3 active worktrees** (each is ~500MB node_modules
 + a dev server + a Claude session). Phases 2 and 4 use 2 worktrees;
@@ -80,6 +90,7 @@ Phase 3 saturates at 3.
 | 3 | 2, 3, 6 | `feat/recommend`, `feat/navigator`, `feat/agent-layer` | wt1, wt2, wt3 | Agent 3 |
 | 4 | 4, 5 | `feat/map`, `feat/auth-claim-admin` | any 2 of wt1-3 | Agent 5 |
 | 5 | — | `chore/...` or `fix/...` per task | any | demo readiness |
+| 6 | 8 | `feat/investor-public` | any | post-MVP |
 
 Agents may reuse worktrees as earlier phases' PRs merge. Reset a
 worktree between phases with `git checkout main && git pull && git
@@ -382,6 +393,61 @@ priority order:
    complement variant adds value (e.g., the printable memo for the
    plan page), implement as an opt-in toggle.
 
+## Phase 6 — Investor public surface + watchlists + intro brokerage
+
+**Post-MVP. Not part of the 24-hour hackathon ship.** Picks up
+after Phase 5 once the demo is locked. Single agent. Builds **on
+top of** Phase 4's investor identity (sign-up, role, onboarding,
+`investor_profiles` preferences) — does not duplicate any of it.
+
+### Agent 8 — Investor public surface
+
+- **Branch:** `feat/investor-public`
+- **Worktree:** any free of wt1-3
+- **Brief:** `agent-tasks/agent-8-investor.md`
+- **Depends on:** Agents 1, 4, 5, 7 all merged. Phase 5 polish
+  ideally landed (so investor sign-up + map filter integration is
+  stable before you build on it).
+- **What's already done by Phase 4 (don't redo):** investor role,
+  sign-up, OTP verify, `/onboarding/investor`, `/settings`
+  Investor section, `investor_profiles` table (preferences-shaped),
+  `POST/GET /api/v1/investor-profiles`, demo seed rows.
+- **Touches:**
+  - `db/schema.ts` extensions:
+    - **Add columns to `investor_profiles`** (rebase before
+      generate): `slug TEXT UNIQUE` (nullable until first publish),
+      `display_name`, `bio`, `tagline`, `website`, `linkedin`,
+      `verification_status` ('unverified' | 'verified', default
+      'unverified'), `verified_at`, `last_updated_by`.
+    - **New tables:** `saved_companies` (id `sc_*`), `intro_requests`
+      (id `irq_*`).
+  - `lib/ids.ts` — extend with `'sc'`, `'irq'`.
+  - `app/investors/page.tsx` (public directory),
+    `app/investors/[slug]/page.tsx` (public profile),
+    `app/investors/[slug]/edit/page.tsx` (owner self-edit, links
+    out from `/settings` Investor section),
+    `app/investors/[slug]/route.md/route.ts`,
+    `app/investors/[slug]/route.json/route.ts`.
+  - `app/me/saved/page.tsx`, `app/me/intros/page.tsx`.
+  - `app/admin/intros/page.tsx`, `app/admin/intros/[id]/page.tsx`
+    (new admin queue alongside `/admin/submissions`).
+  - `app/api/v1/investor-profiles/[slug]/route.ts` — `GET` (public),
+    `PATCH` (three-auth-mode like `companies/[slug]`).
+  - `app/api/v1/saved-companies/route.ts` (POST/DELETE/GET own).
+  - `app/api/v1/intro-requests/{,[id]}/route.ts`.
+  - `app/companies/[slug]/page.tsx` (Agent 4's surface) — add
+    "Save" + "Request intro through GOEO" buttons (signed-in
+    only). Coordinate with Agent 4.
+  - `lib/email.ts` — extend with intro-pending / -accepted /
+    -declined / -introduced templates (mirrors Agent 5's
+    verification mail wiring).
+  - `lib/investor-card.ts` — shared formatter for HTML / .md /
+    .json (mirrors `lib/company-card.ts`).
+- **Coordination:** see new Agent 5 ↔ Agent 8 and Agent 4 ↔ Agent 8
+  rows in the matrix below.
+- **Demo enables:** none. Phase 6 ships its own follow-up demo if
+  desired — no impact on the original 5-scene demo script.
+
 ## Coordination matrix
 
 Where two agents touch the same file, contract, or downstream
@@ -402,6 +468,10 @@ Phase 3 or Phase 4.**
 | Agent 4 | Agent 5 | "Claim this company" button on profile | Agent 4 places the button (links to `/companies/:slug/claim`). Agent 5 owns the handler. |
 | Agent 4 | Agent 6 | `lib/company-card.ts` | Agent 4 owns the formatter. Agent 6's MCP `get_company` tool calls the `/api/v1/companies/:slug` endpoint, not the formatter directly. |
 | Agent 4, 5 | Agent 7 | layout + tokens | Both consume Agent 7's nav + footer + theme. Coordinate only if their pages need new brand primitives Agent 7 hasn't shipped. |
+| Agent 5 | Agent 8 | `investor_profiles` schema | Phase 4 ships the table preferences-shaped (`firm_name`, `investor_type`, `stages_json`, `sectors_json`, `check_size_min/max`, `geo_focus_json`). Phase 6 (Agent 8) **adds columns** for the public surface: `slug` UNIQUE, `display_name`, `bio`, `tagline`, `website`, `linkedin`, `verification_status`, `verified_at`, `last_updated_by`. New tables `saved_companies` and `intro_requests` are Agent 8's alone. Rebase before `db:generate`. |
+| Agent 5 | Agent 8 | `/settings` Investor section | Phase 4 owns `/settings` with an Investor section that edits **preferences** (firm, type, stages, sectors, check size, geo focus). Phase 6 adds a "Manage your public profile" link from that section out to `/investors/<slug>/edit` — the public-facing fields live there, not in `/settings`. No structural change to `/settings`. |
+| Agent 4 | Agent 8 | `app/companies/[slug]/page.tsx` | Agent 4 owns the profile page. Agent 8 (Phase 6) adds a small "Save" + "Request intro through GOEO" button group (signed-in only). Agent 8 PR adds buttons + handlers without touching Agent 4's data flow. |
+| Agent 5 | Agent 8 | `/admin` shell + role gate | Agent 5 owns `/admin` layout + middleware. Agent 8 adds `/admin/intros` under the same shell, gated on the same `goeo_admin | superadmin` rule. No middleware changes needed. |
 | Any | Agent 1 | `db/schema.ts` extensions | Any agent may extend schema in their own worktree. **Rebase against `main` before `db:generate`.** Number collision rule: rename the loser's migration file to next free index. |
 | Any | Agent 1 | new schema column they can't add themselves | Append a request to `docs/agent-tasks/schema-requests.md`. |
 
@@ -462,6 +532,9 @@ These are **production cuts**, not demo cuts. The mental model is
 see." Drawn from each brief's "Cuts allowed if time-pressed"
 sections, prioritized.
 
+0. **Phase 6 entirely.** Phase 6 (investor public surface +
+   watchlists + intros) is post-MVP by design — it never gates the
+   hackathon ship. If you're behind, don't even start it.
 1. **Phase 5 entirely** — only do Phase 5 if every Phase 4 PR has
    merged with time to spare.
 2. **Agent 6** — skip remote MCP, skip MCP prompts/resources (8 tools
@@ -526,6 +599,7 @@ Cut earliest from agents whose work is *least* visible in the demo.
 | 3 | ~120 min (longest of Agents 2, 3, 6) | ~330 min |
 | 4 | ~210 min (Agent 5 critical — Auth.html scope + investor; Agent 4 ~120 min in parallel) | ~330 min |
 | 5 | remainder, capped at 3 hr | varies |
+| 6 | post-hackathon — ~150 min when picked up | ~150 min |
 
 Buffer for demo prep, deploy validation, and slippage: at least 2 hr
 before the 24-hour mark.
@@ -538,6 +612,7 @@ Phase 2: ⬜ PENDING — Agent 1 (data), Agent 7 (brand-shell)
 Phase 3: ⬜ PENDING — blocked on Phase 2
 Phase 4: ⬜ PENDING — blocked on Phase 2
 Phase 5: ⬜ PENDING — blocked on Phase 4
+Phase 6: ⬜ POST-MVP — does not gate the hackathon ship; pick up after demo
 ```
 
 When you merge a PR, flip its status to ✅ here in the same commit

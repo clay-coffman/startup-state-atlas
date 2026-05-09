@@ -301,9 +301,11 @@ Wrap that in `lib/cf.ts` so handlers don't import OpenNext directly.
   is also served at `/api/v1/openapi.json`. Agent 6 owns it.
 - **Error shape:** `{ error: { code, message, details? } }`.
 - **ID prefixes:** `fp_*`, `co_*`, `r_*`, `rec_*`, `bos_*`,
-  `inv_*` (investor profiles). Use `lib/ids.ts`. (Better Auth's
-  own IDs — `user`, `session`, `account`, `verification` — are
-  managed by Better Auth.)
+  `inv_*` (investor profiles). Phase 6 (post-MVP) adds
+  `sc_*` (saved companies) and `irq_*` (intro requests) — see
+  `docs/agent-tasks/agent-8-investor.md`. Use `lib/ids.ts`.
+  (Better Auth's own IDs — `user`, `session`, `account`,
+  `verification` — are managed by Better Auth.)
 - **Casing:** snake_case API ↔ camelCase TS. Convert at the
   Drizzle/zod boundary.
 - **Auth (dual model):**

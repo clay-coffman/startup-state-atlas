@@ -210,6 +210,41 @@ preferences into `/map` filter chips and a weekly cluster-brief
 email. Investors can still see the whole map regardless — the
 preferences personalize, they don't gate.
 
+### Investor public surface + watchlists + intros (Phase 6 / post-MVP)
+
+**Not part of the 24-hour hackathon ship.** Phase 6 builds on top of
+Phase 4's investor identity. See `docs/agent-tasks/agent-8-investor.md`.
+
+- **Public investor directory** at `/investors`. Anonymous-readable.
+  Lists profiles with `verification_status = 'verified'` only.
+- **Public investor profile** at `/investors/<slug>` with `.md` and
+  `.json` agent variants (mirroring the company-profile triple).
+  Investor email is **never** public — intros are admin-brokered.
+- **Schema extension to `investor_profiles`** (Phase 4 owns the
+  table; Phase 6 adds the public-facing columns): `slug` UNIQUE,
+  `display_name`, `bio`, `tagline`, `website`, `linkedin`,
+  `verification_status` ('unverified' default), `verified_at`,
+  `last_updated_by`. Phase 4 rows stay valid — they default to
+  `unverified` and don't appear in the directory until they
+  publish + admin approves.
+- **Self-serve public-profile editor** at
+  `/investors/<slug>/edit`. Linked from the `/settings` Investor
+  section ("Manage your public profile"). Field whitelist for
+  owner edits; admin can override anything.
+- **Saved-companies watchlist.** Investors save companies from
+  the map / `/startups` to a personal list at `/me/saved`. Optional
+  one-line note. Stored in `saved_companies` (`sc_*`).
+- **Intro requests, always admin-brokered.** Both directions —
+  founder/owner → investor, investor → founder/owner — flow
+  through GOEO. Requester writes a short message, submits, lands
+  in `/admin/intros` as `pending`. Admin accepts (system emails
+  both parties via Resend with contact info), declines, or marks
+  `introduced`. Stored in `intro_requests` (`irq_*`).
+- **No CRM, no DMs.** Once admin accepts, the email is the
+  handoff. Platform-side state ends.
+- **Mobile-responsive** (375 / 768 / 1280px) and a11y-compliant
+  on every new surface, like the rest of the product.
+
 ### Self-service claim flow (with ownership verification)
 
 - "Claim this company" button on profile → routes the founder to
